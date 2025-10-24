@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Friday — Advanced Movie Ticket Booking System (Demo)</title>
+  <meta name="description" content="Single-file demo implementing Movie, Theater, Ticket, BookingManager classes with UI and unit tests."/>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#94a3b8; --accent:#06b6d4; --success:#22c55e; --danger:#ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --radius:12px; --gap:14px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:
+      radial-gradient(800px 400px at 10% 10%, rgba(6,182,212,0.07), transparent),
+      linear-gradient(180deg, #071023 0%, #071226 100%);
+      color:#e6eef8; padding:28px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .container{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+    header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    h1{margin:0;font-size:20px;letter-spacing:-0.2px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow: 0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    .left{min-height:420px}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    select,input[type="date"]{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;color:inherit}
+    button{cursor:pointer;border:0;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--accent),#0891b2);color:#042027;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);font-weight:600}
+    .theater{display:flex;gap:12px}
+    .screen{background:linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:8px;border-radius:8px;text-align:center;color:var(--muted);font-size:13px}
+    .seat-map{display:grid;grid-template-columns:repeat(8,46px);gap:8px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);min-height:220px}
+    .seat{height:38px;border-radius:8px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted);user-select:none}
+    .seat.available{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));cursor:pointer}
+    .seat.booked{background:linear-gradient(180deg,#111827,#0b1220);color:var(--muted);opacity:0.7;cursor:not-allowed}
+    .seat.selected{outline:3px solid rgba(6,182,212,0.18);box-shadow:0 6px 18px rgba(6,182,212,0.06);color:#042027;background:linear-gradient(180deg,#a7f3d0,#06b6d4)}
+    .legend{display:flex;gap:10px;align-items:center;font-size:13px;margin-top:8px;color:var(--muted)}
+    .legend span{display:inline-flex;align-items:center;gap:8px}
+    .dot{width:14px;height:14px;border-radius:4px;display:inline-block}
+    .dot.av{background:linear-gradient(180deg,#d1fae5,#10b981)}
+    .dot.bk{background:linear-gradient(180deg,#111827,#0b1220)}
+    .dot.sel{background:linear-gradient(180deg,#a7f3d0,#06b6d4)}
+    .sidebar .card{position:sticky;top:28px}
+    .summary{font-size:14px;color:var(--muted);margin-top:12px}
+    .summary strong{color:#e6eef8}
+    .tests{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+    .test-row{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .test-pass{color:var(--success);font-weight:700}
+    .test-fail{color:var(--danger);font-weight:700}
+    footer{grid-column:1/-1;margin-top:20px;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:980px){.container{grid-template-columns:1fr;padding:12px}.sidebar{order:2}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Friday — Movie Ticket Booking System</h1>
+        <p class="lead">Interactive demo implementing <strong>Movie</strong>, <strong>Theater</strong>, <strong>Ticket</strong> & <strong>BookingManager</strong> with UI and unit tests.</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="runTestsBtn" title="Run the automated unit tests">Run Unit Tests</button>
+        <button id="resetBtn" class="ghost" title="Reset demo state">Reset</button>
+      </div>
+    </header>
+
+    <main class="left card">
+      <section class="controls">
+        <label>
+          Movie
+          <select id="movieSelect" aria-label="Select movie"></select>
+        </label>
+        <label>
+          Showtime
+          <select id="showSelect" aria-label="Select showtime"></select>
+        </label>
+        <label>
+          Date
+          <input id="dateInput" type="date">
+        </label>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="bookBtn">Book Selected Seat</button>
+        </div>
+      </section>
+
+      <section class="card theater" aria-label="Theater view">
+        <div style="flex:1">
+          <div class="screen">SCREEN</div>
+          <div id="seatMap" class="seat-map" role="grid" aria-label="Seat map"></div>
+          <div class="legend">
+            <span><i class="dot av"></i> Available</span>
+            <span><i class="dot bk"></i> Booked</span>
+            <span><i class="dot sel"></i> Selected</span>
+          </div>
+        </div>
+        <aside style="width:270px">
+          <div class="card sidebar">
+            <h3 style="margin:0 0 8px 0">Selection</h3>
+            <div class="summary" id="selectionSummary">No seat selected.</div>
+
+            <h3 style="margin-top:12px">Actions</h3>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="cancelBtn" class="ghost">Cancel Ticket</button>
+              <button id="viewTickets" class="ghost">View Tickets</button>
+            </div>
+
+            <div class="tests" id="testOutput" aria-live="polite"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <aside class="sidebar">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">System Info</h3>
+        <div style="font-size:13px;color:var(--muted)">
+          <p><strong>Theater:</strong> Demo Hall — 3 rows × 8 cols (A–C, 1–8)</p>
+          <p><strong>Fare:</strong> ₹200 per seat (configurable in code)</p>
+          <p><strong>Policy:</strong> Full refund on cancellation (demo)</p>
+        </div>
+
+        <h3 style="margin-top:12px;margin-bottom:8px">Unit Test Results</h3>
+        <div class="card" id="unitTestCard" style="padding:10px;background:transparent;border:0">
+          <div id="unitResults">
+            <div class="test-row"><div>1) Seat availability updated after booking</div><div id="t1" class="test-pass">—</div></div>
+            <div class="test-row"><div>2) Double booking of same seat not allowed</div><div id="t2" class="test-pass">—</div></div>
+            <div class="test-row"><div>3) Cancellation restores seat + refund</div><div id="t3" class="test-pass">—</div></div>
+          </div>
+        </div>
+
+        <h3 style="margin-top:12px">Logs</h3>
+        <pre id="log" style="height:140px;padding:8px;overflow:auto;background:rgba(0,0,0,0.25);border-radius:8px;color:var(--muted);font-size:13px">Initialized.</pre>
+      </div>
+    </aside>
+
+    <footer>Single-file demo • Seats, bookings and tests are simulated in-memory for demonstration purposes only.</footer>
+  </div>
+
+  <script>
+    /* ============================
+       Domain classes (clean, testable)
+       ============================ */
+    class Movie {
+      constructor(id, title, duration = 120) { this.id = id; this.title = title; this.duration = duration; }
+    }
+
+    class Theater {
+      // seats is array of seatIds e.g. ['A1','A2'...]
+      constructor(id, name, seats){
+        this.id = id; this.name = name;
+        this.seatState = Object.fromEntries(seats.map(s => [s, { available: true, ticketId: null }]));
+      }
+      isSeatAvailable(seatId){
+        const s = this.seatState[seatId];
+        if(!s) throw new Error('Seat not found: ' + seatId);
+        return s.available;
+      }
+      markBooked(seatId, ticketId){
+        if(!this.seatState[seatId]) throw new Error('Seat not found: ' + seatId);
+        if(!this.seatState[seatId].available) return false;
+        this.seatState[seatId].available = false;
+        this.seatState[seatId].ticketId = ticketId;
+        return true;
+      }
+      markAvailable(seatId){
+        if(!this.seatState[seatId]) throw new Error('Seat not found: ' + seatId);
+        this.seatState[seatId].available = true;
+        this.seatState[seatId].ticketId = null;
+        return true;
+      }
+      availableSeats(){ return Object.entries(this.seatState).filter(([k,v])=>v.available).map(([k])=>k); }
+    }
+
+    class Ticket {
+      constructor(id, movieId, theaterId, showtime, seatId, price){
+        this.id = id; this.movieId = movieId; this.theaterId = theaterId; this.showtime = showtime; this.seatId = seatId; this.price = price;
+        this.createdAt = new Date().toISOString();
+      }
+    }
+
+    class BookingManager {
+      constructor(){
+        this.tickets = new Map();
+        this._nextTicketId = 1;
+        this.refundPolicy = { refundPercent: 100 };
+      }
+      _generateTicketId(){ return 'T' + (this._nextTicketId++); }
+      book(movie, theater, showtime, seatId, price){
+        if(!theater.isSeatAvailable(seatId)) throw new Error('Seat already booked');
+        const ticketId = this._generateTicketId();
+        const booked = theater.markBooked(seatId, ticketId);
+        if(!booked) throw new Error('Failed to book seat (concurrent)');
+        const ticket = new Ticket(ticketId, movie.id, theater.id, showtime, seatId, price);
+        this.tickets.set(ticketId, ticket);
+        return ticket;
+      }
+      cancel(ticketId, theater){
+        const ticket = this.tickets.get(ticketId);
+        if(!ticket) throw new Error('Ticket not found');
+        theater.markAvailable(ticket.seatId);
+        this.tickets.delete(ticketId);
+        const refund = (ticket.price * this.refundPolicy.refundPercent) / 100;
+        return { ticketId, refund, seatId: ticket.seatId };
+      }
+      getTicket(ticketId){ return this.tickets.get(ticketId) || null; }
+      listTickets(){ return Array.from(this.tickets.values()); }
+    }
+
+    /* ============================
+       Demo initialization & UI wiring
+       ============================ */
+    (function(){
+      const logEl = id('log');
+      const movieSelect = id('movieSelect'), showSelect = id('showSelect'), dateInput = id('dateInput');
+      const seatMapEl = id('seatMap'), selectionSummary = id('selectionSummary');
+      const bookBtn = id('bookBtn'), cancelBtn = id('cancelBtn'), viewTickets = id('viewTickets');
+      const runTestsBtn = id('runTestsBtn'), resetBtn = id('resetBtn');
+      const unitT1 = id('t1'), unitT2 = id('t2'), unitT3 = id('t3');
+      const testOutput = id('testOutput');
+
+      function id(i){ return document.getElementById(i); }
+
+      // Build demo theater seats: rows A-C, cols 1-8
+      const rows = ['A','B','C'];
+      const cols = Array.from({length:8},(_,i)=>i+1);
+      const seats = rows.flatMap(r => cols.map(c => r + c));
+
+      // demo data
+      const movies = [ new Movie('M1', 'The Friday Show', 120), new Movie('M2', 'Midnight Code', 105) ];
+      const showtimes = ['19:00', '21:30'];
+      const theater = new Theater('TH1','Demo Hall', seats);
+      const fare = 200;
+      const mgr = new BookingManager();
+
+      // UI state
+      let selectedSeat = null;
+
+      // populate selectors
+      function populateSelectors(){
+        movieSelect.innerHTML = movies.map(m => `<option value="${m.id}">${m.title}</option>`).join('');
+        showSelect.innerHTML = showtimes.map(s => `<option value="${s}">${s}</option>`).join('');
+        const today = new Date().toISOString().slice(0,10);
+        dateInput.value = today;
+      }
+
+      // render seat map
+      function renderSeatMap(){
+        seatMapEl.innerHTML = '';
+        for(const seatId of seats){
+          const s = theater.seatState[seatId];
+          const div = document.createElement('div');
+          div.className = 'seat ' + (s.available ? 'available' : 'booked');
+          if(!s.available) div.setAttribute('aria-disabled','true');
+          div.textContent = seatId;
+          div.dataset.seat = seatId;
+          if(s.available) div.tabIndex = 0;
+          if(selectedSeat === seatId) div.classList.add('selected');
+          div.addEventListener('click', ()=> onSeatClick(seatId));
+          div.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ onSeatClick(seatId) } });
+          seatMapEl.appendChild(div);
+        }
+      }
+
+      function onSeatClick(seatId){
+        if(!theater.isSeatAvailable(seatId)){
+          flash(`Seat ${seatId} is already booked.`, true);
+          return;
+        }
+        selectedSeat = (selectedSeat === seatId) ? null : seatId;
+        updateSelectionSummary();
+        renderSeatMap();
+      }
+
+      function updateSelectionSummary(){
+        if(!selectedSeat){
+          selectionSummary.innerHTML = 'No seat selected.';
+        } else {
+          const movie = movies.find(m=>m.id===movieSelect.value);
+          selectionSummary.innerHTML = `<strong>${selectedSeat}</strong><br/>${movie.title} • ${showSelect.value} • ${dateInput.value}<br/><strong>Price:</strong> ₹${fare}`;
+        }
+      }
+
+      function flash(msg, isErr=false){
+        const p = document.createElement('div');
+        p.textContent = `${new Date().toLocaleTimeString()}: ${msg}`;
+        logEl.textContent = p.textContent + '\n' + logEl.textContent;
+      }
+
+      // booking flow
+      bookBtn.addEventListener('click', ()=>{
+        try{
+          if(!selectedSeat) throw new Error('Select a seat first.');
+          const movie = movies.find(m=>m.id===movieSelect.value);
+          const showtime = `${dateInput.value}T${showSelect.value}:00`;
+          const ticket = mgr.book(movie, theater, showtime, selectedSeat, fare);
+          flash(`Booked ${selectedSeat} as ${ticket.id} • ₹${ticket.price}`);
+          selectedSeat = null;
+          updateSelectionSummary();
+          renderSeatMap();
+        } catch(err){
+          flash(err.message, true);
+          alert(err.message);
+        }
+      });
+
+      // view tickets
+      viewTickets.addEventListener('click', ()=>{
+        const list = mgr.listTickets();
+        if(list.length===0) return alert('No active tickets');
+        const txt = list.map(t=>`${t.id} — ${t.seatId} — ${t.showtime} — ₹${t.price}`).join('\n');
+        alert(txt);
+      });
+
+      // cancel flow (simple: ask ticket id)
+      cancelBtn.addEventListener('click', ()=>{
+        const ticketId = prompt('Enter ticket id to cancel (e.g. T1):');
+        if(!ticketId) return;
+        try{
+          const res = mgr.cancel(ticketId.trim(), theater);
+          flash(`Cancelled ${res.ticketId} (seat ${res.seatId}) • refund ₹${res.refund}`);
+          renderSeatMap();
+        } catch(err){
+          flash(err.message, true);
+          alert(err.message);
+        }
+      });
+
+      // reset demo
+      resetBtn.addEventListener('click', ()=>{
+        if(!confirm('Reset demo state?')) return;
+        // reinitialize theater & manager
+        for(const s of seats) theater.markAvailable(s);
+        mgr.tickets.clear();
+        mgr._nextTicketId = 1;
+        selectedSeat = null;
+        renderSeatMap(); updateSelectionSummary();
+        unitT1.textContent = unitT2.textContent = unitT3.textContent = '—';
+        unitT1.className = unitT2.className = unitT3.className = '';
+        logEl.textContent = 'Reset.\n';
+      });
+
+      // Unit tests (three tests required)
+      function runUnitTests(){
+        testOutput.innerHTML = '';
+        // Helper assertions
+        function assert(cond, msg){ if(!cond) throw new Error(msg || 'Assertion failed'); }
+
+        // Setup a fresh manager & theater for tests (do not disturb UI state)
+        const testSeats = ['X1','X2','X3'];
+        const tTheater = new Theater('TTEST','Test Hall', testSeats);
+        const tMgr = new BookingManager();
+        const tMovie = new Movie('MT','Test Movie');
+        const tShow = '2025-10-24T19:00:00';
+        const tPrice = 100;
+
+        // Test 1: Seat availability updated after booking.
+        try {
+          const ticket = tMgr.book(tMovie, tTheater, tShow, 'X1', tPrice);
+          assert(!tTheater.isSeatAvailable('X1'), 'Seat X1 should be unavailable after booking');
+          showTestResult(1, true, `ticket=${ticket.id}`);
+          unitT1.textContent = 'PASS'; unitT1.className = 'test-pass';
+        } catch(e){
+          showTestResult(1, false, e.message);
+          unitT1.textContent = 'FAIL'; unitT1.className = 'test-fail';
+        }
+
+        // Test 2: Double booking of same seat is not allowed.
+        try {
+          let threw = false;
+          try { tMgr.book(tMovie, tTheater, tShow, 'X1', tPrice); } catch(e){ threw = true; }
+          assert(threw === true, 'Second booking should throw or be prevented');
+          showTestResult(2, true);
+          unitT2.textContent = 'PASS'; unitT2.className = 'test-pass';
+        } catch(e){
+          showTestResult(2, false, e.message);
+          unitT2.textContent = 'FAIL'; unitT2.className = 'test-fail';
+        }
+
+        // Test 3: Cancellation restores seat availability and refund.
+        try {
+          const t2 = tMgr.book(tMovie, tTheater, tShow, 'X2', tPrice);
+          assert(!tTheater.isSeatAvailable('X2'), 'X2 booked');
+          const res = tMgr.cancel(t2.id, tTheater);
+          assert(tTheater.isSeatAvailable('X2'), 'X2 should be available after cancel');
+          assert(res.refund === tPrice, 'Refund should equal price per demo policy');
+          showTestResult(3, true, `refund=₹${res.refund}`);
+          unitT3.textContent = 'PASS'; unitT3.className = 'test-pass';
+        } catch(e){
+          showTestResult(3, false, e.message);
+          unitT3.textContent = 'FAIL'; unitT3.className = 'test-fail';
+        }
+
+        function showTestResult(n, ok, details=''){
+          const d = document.createElement('div');
+          d.className = 'test-row';
+          d.innerHTML = `<div>Test ${n} ${ok?'<span style="color:var(--success)">PASSED</span>':'<span style="color:var(--danger)">FAILED</span>'}</div><div style="color:var(--muted);font-size:13px">${details}</div>`;
+          testOutput.appendChild(d);
+        }
+      }
+
+      // attach test runner
+      runTestsBtn.addEventListener('click', ()=>{
+        try {
+          runUnitTests();
+          flash('Unit tests executed.');
+        } catch(e){
+          flash('Unit tests failed: ' + e.message, true);
+        }
+      });
+
+      // init
+      populateSelectors();
+      renderSeatMap();
+      updateSelectionSummary();
+
+      // small convenience: pre-book a few seats to show booked state
+      try {
+        const demoMovie = movies[0];
+        const dt = `${new Date().toISOString().slice(0,10)}T19:00:00`;
+        const tA = mgr.book(demoMovie, theater, dt, 'A3', fare);
+        const tB = mgr.book(demoMovie, theater, dt, 'B5', fare);
+        flash(`Pre-booked ${tA.seatId} (${tA.id}) and ${tB.seatId} (${tB.id}) for demo`);
+        renderSeatMap();
+      } catch(e){ /* ignore */ }
+
+      // expose for debugging (optional)
+      window.__DEMO = { theater, mgr, movies, fare };
+    })();
+  </script>
+</body>
+</html>
